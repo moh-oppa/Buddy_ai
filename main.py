@@ -4,6 +4,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
+
+from schemas import (
+    DocResponse,
+    SummaryRequest,
+    SummaryResponse,
+    ChatRequest,
+    ChatResponse,
+    ExtractResponse,
+    Doc,
+    ChatMessage,
+)
+
 load_dotenv()
 
 
