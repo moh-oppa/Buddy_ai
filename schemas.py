@@ -5,24 +5,24 @@ from datetime import datetime
 
 class Doc(BaseModel):
     id: str
-    filename: str
-    content_type: str
+    name: str
+    type: str
     size: int
-    text_length: int
+    text: str
+    truncated: bool
     uploaded_at: datetime
 
 
 class DocResponse(BaseModel):
     id: str
-    filename: str
-    content_type: str
+    name: str
     size: int
-    text_length: int
+    truncated: bool
     uploaded_at: datetime
 
 
 class SummaryRequest(BaseModel):
-    style: Literal["concise", "detailed", "bullet_points"] = "Detailed"
+    style: Literal["concise", "detailed", "bullet_points"] = "detailed"
 
 
 class SummaryResponse(BaseModel):
