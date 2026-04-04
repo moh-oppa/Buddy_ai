@@ -1,3 +1,5 @@
+import ollama
+import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List
@@ -25,12 +27,27 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    api_key = os.getenv("API_KEY")
+    api_key = os.getenv("AI_API_KEY")
+    ollama_host = os.getenv("AI_HOST", "https://api.ollama.com")
+    ollama_model = os.getenv("AI_MODEL", "llama3")
     if not api_key:
-        raise RuntimeError("API_KEY environment variable is not set.")
+        raise RuntimeError("AI_API_KEY environment variable is not set.")
 
-    app.state.client = ai.AI(api_key=api_key)
+    app.state.client = ollama.AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
+    app.state.model = ollama_model
     app.state.documents = {}
+
+    try:
+        models = await app.state.ollama_client.list()
+        available = [m.model for m in models.models]
+
+        if ollama_model not in available:
+            raise RuntimeError(f"Model '{ollama_model}' not found. Available: {available}")
+
+        print(f"Ollama client initialised — model: {ollama_model}")
+    except Exception as e:
+        raise RuntimeError(f"Ollama not reachable at {ollama_host}: {e}")
+
     print("Ai client initialised")
     print("Document store initialised")
 
@@ -134,13 +151,14 @@ async def delete_doc(request: Request, doc_id: str):
     return {"message": f"Document {doc_id} deleted successfully!"}
 
 
-@app.post("/buddyai/summarize/{doc_id}")
-async def summary(request: Request, body: SummaryRequest, doc_id: id):
+@app.post("/buddyai/summarize/{doc_id}", response_model=SummaryResponse)
+async def summary(request: Request, body: SummaryRequest, doc_id: str):
     docs = request.app.state.documents
     if doc_id not in docs:
         raise HTTPException(status_code=404, detail="Document not found")
 
     doc = docs[doc_id]
     template = STYLE_TEMPLATE[body.style]
+    short = request.app.state.client.messages.create(...)
 
-    return {"id": doc_id, "name": doc.name, "style": body.style, "prompt": template, "text": doc.text}
+    return SummaryResponse(doc_id=doc_id, style=body.style, summary=short)
