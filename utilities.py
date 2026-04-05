@@ -3,7 +3,7 @@ from io import BytesIO
 from PyPDF2 import PdfReader
 from fastapi import File, HTTPException, UploadFile
 
-from main import MAX_TEXT_LENGTH
+MAX_TEXT_LENGTH= 80000
 
 
 async def parse_pdf(doc: UploadFile = File(...)):
