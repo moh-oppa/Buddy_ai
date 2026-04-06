@@ -1,9 +1,10 @@
 from io import BytesIO
+import ollama
 
 from PyPDF2 import PdfReader
 from fastapi import File, HTTPException, UploadFile
 
-MAX_TEXT_LENGTH= 80000
+MAX_TEXT_LENGTH = 80000
 
 
 async def parse_pdf(doc: UploadFile = File(...)):

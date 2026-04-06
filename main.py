@@ -26,35 +26,35 @@ from utilities import parse_docx, parse_pdf, parse_text
 load_dotenv()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    api_key = os.getenv("AI_API_KEY")
-    ollama_host = os.getenv("AI_HOST", "https://api.ollama.com")
-    ollama_model = os.getenv("AI_MODEL", "llama3")
-    if not api_key:
-        raise RuntimeError("AI_API_KEY environment variable is not set.")
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     api_key = os.getenv("AI_API_KEY")
+#     ollama_host = os.getenv("AI_HOST", "https://api.ollama.com")
+#     ollama_model = os.getenv("AI_MODEL", "llama3")
+#     if not api_key:
+#         raise RuntimeError("AI_API_KEY environment variable is not set.")
 
-    app.state.client = ollama.AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
-    app.state.model = ollama_model
-    app.state.documents = {}
+#     app.state.client = ollama.AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
+#     app.state.model = ollama_model
+#     app.state.documents = {}
 
-    try:
-        models = await app.state.client.list()
-        available = [m.model for m in models.models]
+#     try:
+#         models = await app.state.client.list()
+#         available = [m.model for m in models.models]
 
-        if ollama_model not in available:
-            raise RuntimeError(f"Model '{ollama_model}' not found. Available: {available}")
+#         if ollama_model not in available:
+#             raise RuntimeError(f"Model '{ollama_model}' not found. Available: {available}")
 
-        print(f"Ollama client initialised — model: {ollama_model}")
-    except Exception as e:
-        raise RuntimeError(f"Ollama not reachable at {ollama_host}: {e}")
+#         print(f"Ollama client initialised — model: {ollama_model}")
+#     except Exception as e:
+#         raise RuntimeError(f"Ollama not reachable at {ollama_host}: {e}")
 
-    print("Ai client initialised")
-    print("Document store initialised")
+#     print("Ai client initialised")
+#     print("Document store initialised")
 
-    yield
+#     yield
 
-    print("Shutting down!")
+#     print("Shutting down!")
 
 
 app = FastAPI(title="BuddyAI API", description="AI powered document reader ", version="1.0.0", lifespan=lifespan)
@@ -100,6 +100,7 @@ async def health_check():
 
 @app.get("/buddyai/docs", response_model=List[DocResponse])
 async def all_docs(request: Request):
+    #get all documents
     docs = request.app.state.documents
     if not docs:
         raise HTTPException(status_code=404, detail="No documents available!")
@@ -108,6 +109,7 @@ async def all_docs(request: Request):
 
 @app.post("/buddyai/upload_doc")
 async def upload_doc(request: Request, doc: UploadFile = File(...)):
+    #check type
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
 
