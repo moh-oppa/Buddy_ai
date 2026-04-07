@@ -1,6 +1,4 @@
 from io import BytesIO
-import ollama
-
 from PyPDF2 import PdfReader
 from fastapi import File, HTTPException, UploadFile
 

@@ -1,6 +1,6 @@
-import ollama
 import json
 import httpx
+from ollama import AsyncClient
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List
@@ -26,35 +26,35 @@ from utilities import parse_docx, parse_pdf, parse_text
 load_dotenv()
 
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     api_key = os.getenv("AI_API_KEY")
-#     ollama_host = os.getenv("AI_HOST", "https://api.ollama.com")
-#     ollama_model = os.getenv("AI_MODEL", "llama3")
-#     if not api_key:
-#         raise RuntimeError("AI_API_KEY environment variable is not set.")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    api_key = os.getenv("AI_API_KEY")
+    ollama_host = os.getenv("AI_HOST", "https://ollama.com")
+    ollama_model = os.getenv("AI_MODEL", "gpt-oss:120b")
+    if not api_key:
+        raise RuntimeError("AI_API_KEY environment variable is not set.")
 
-#     app.state.client = ollama.AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
-#     app.state.model = ollama_model
-#     app.state.documents = {}
+    app.state.client = AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
+    app.state.model = ollama_model
+    app.state.documents = {}
 
-#     try:
-#         models = await app.state.client.list()
-#         available = [m.model for m in models.models]
+    try:
+        models = await app.state.client.list()
+        available = [m.model for m in models.models]
 
-#         if ollama_model not in available:
-#             raise RuntimeError(f"Model '{ollama_model}' not found. Available: {available}")
+        if ollama_model not in available:
+            raise RuntimeError(f"Model '{ollama_model}' not found. Available: {available}")
 
-#         print(f"Ollama client initialised — model: {ollama_model}")
-#     except Exception as e:
-#         raise RuntimeError(f"Ollama not reachable at {ollama_host}: {e}")
+        print(f"Ollama client initialised — model: {ollama_model}")
+    except Exception as e:
+        raise RuntimeError(f"Ollama not reachable at {ollama_host}: {e}")
 
-#     print("Ai client initialised")
-#     print("Document store initialised")
+    print("Ai client initialised")
+    print("Document store initialised")
 
-#     yield
+    yield
 
-#     print("Shutting down!")
+    print("Shutting down!")
 
 
 app = FastAPI(title="BuddyAI API", description="AI powered document reader ", version="1.0.0", lifespan=lifespan)
@@ -104,6 +104,7 @@ async def all_docs(request: Request):
     docs = request.app.state.documents
     if not docs:
         raise HTTPException(status_code=404, detail="No documents available!")
+    
     return list(docs.values())
 
 
@@ -162,8 +163,8 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str):
 
     doc = docs[doc_id]
     template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {doc.text} """
-    short = request.app.state.client.chat(
-        model="llama3",
+    short = await request.app.state.client.chat(
+        model="gpt-oss:120b",
         messages=[
             {"role": "system", "content": template},
             {"role": "user", "content": "summarize the provided document."},
@@ -191,7 +192,7 @@ async def chat(request: Request, body: ChatRequest, doc_id: str):
 
     messages.append({"role": "user", "content": body.message})
 
-    response = request.app.state.client.chat(model="llama3", messages=messages)
+    response = await request.app.state.client.chat(model="llama3", messages=messages)
 
     reply = response["message"]["content"]
 
@@ -216,8 +217,8 @@ async def extract(request: Request, doc_id: str):
     The document content is: {doc.text}
     """
 
-    response = request.app.state.client.chat(
-        model="llama3",
+    response = await request.app.state.client.chat(
+        model="gpt-oss:120b",
         messages=[
             {"role": "system", "content": system_prompt},
             {
@@ -231,10 +232,6 @@ async def extract(request: Request, doc_id: str):
 
     try:
         extraction = json.loads(content)
-        data = httpx.get(content).json()
-        entities = data.get("entities", [])
-        dates = data.get("dates", [])
-        figures = data.get("figures", [])
     except json.JSONDecodeError:
         extraction = {"entities": [], "dates": [], "figures": []}
 
