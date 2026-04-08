@@ -87,11 +87,6 @@ async def root():
     return {"message": "Welcome to the BuddyAI!"}
 
 
-# @app.get("/test-client")
-# async def test_client(request: Request):
-#     client = request.app.state.client
-#     return {"client_ready": client is not None}
-
 
 @app.get("/buddyai/health")
 async def health_check():
