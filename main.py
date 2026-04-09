@@ -87,7 +87,6 @@ async def root():
     return {"message": "Welcome to the BuddyAI!"}
 
 
-
 @app.get("/buddyai/health")
 async def health_check():
     return {"status": "OK", "version": "1.0.0", "time": datetime.now(timezone.utc).isoformat()}
@@ -126,7 +125,7 @@ async def upload_doc(request: Request, doc: UploadFile = File(...)):
         type=doc.content_type,
         size=doc.size,
         text=content,
-        truncated=len(content) == MAX_TEXT_LENGTH,
+        truncated=len(content) >= MAX_TEXT_LENGTH,
         uploaded_at=datetime.now(timezone.utc),
     )
     request.app.state.documents[new_doc.id] = new_doc
@@ -158,13 +157,16 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str):
 
     doc = docs[doc_id]
     template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {doc.text} """
-    short = await request.app.state.client.chat(
-        model="gpt-oss:120b",
-        messages=[
-            {"role": "system", "content": template},
-            {"role": "user", "content": "summarize the provided document."},
-        ],
-    )
+    try:
+        short = await request.app.state.client.chat(
+            model="gpt-oss:120b",
+            messages=[
+                {"role": "system", "content": template},
+                {"role": "user", "content": "summarize the provided document."},
+            ],
+        )
+    except Exception as e:
+        raise RuntimeError(f"Unable to complete action: {e}")
 
     summary_text = short["message"]["content"]
 
@@ -186,8 +188,12 @@ async def chat(request: Request, body: ChatRequest, doc_id: str):
         messages.append({"role": msg.role, "content": msg.content})
 
     messages.append({"role": "user", "content": body.message})
+    try:
 
-    response = await request.app.state.client.chat(model="llama3", messages=messages)
+        response = await request.app.state.client.chat(model="gpt-oss:120b", messages=messages)
+    except Exception as e:
+        raise RuntimeError(f"Unable to complete action: {e}")
+
 
     reply = response["message"]["content"]
 
@@ -211,17 +217,20 @@ async def extract(request: Request, doc_id: str):
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
     The document content is: {doc.text}
     """
+    try:
 
-    response = await request.app.state.client.chat(
-        model="gpt-oss:120b",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": "Extract the information as a JSON object with three fields: 'entities', 'dates', and 'figures'.",
-            },
-        ],
-    )
+        response = await request.app.state.client.chat(
+            model="gpt-oss:120b",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": "Extract the information as a JSON object with three fields: 'entities', 'dates', and 'figures'.",
+                },
+            ],
+        )
+    except HTTPException:
+        raise HTTPException(status_code= 500, detail= "Unable to complete action")
 
     content = response["message"]["content"]
 
@@ -236,3 +245,5 @@ async def extract(request: Request, doc_id: str):
         dates=extraction.get("dates", []),
         figures=extraction.get("figures", []),
     )
+
+
