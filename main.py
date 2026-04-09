@@ -1,6 +1,6 @@
-import ollama
 import json
 import httpx
+from ollama import AsyncClient
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List
@@ -29,12 +29,12 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     api_key = os.getenv("AI_API_KEY")
-    ollama_host = os.getenv("AI_HOST", "https://api.ollama.com")
-    ollama_model = os.getenv("AI_MODEL", "llama3")
+    ollama_host = os.getenv("AI_HOST", "https://ollama.com")
+    ollama_model = os.getenv("AI_MODEL", "gpt-oss:120b")
     if not api_key:
         raise RuntimeError("AI_API_KEY environment variable is not set.")
 
-    app.state.client = ollama.AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
+    app.state.client = AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
     app.state.model = ollama_model
     app.state.documents = {}
 
@@ -87,12 +87,6 @@ async def root():
     return {"message": "Welcome to the BuddyAI!"}
 
 
-# @app.get("/test-client")
-# async def test_client(request: Request):
-#     client = request.app.state.client
-#     return {"client_ready": client is not None}
-
-
 @app.get("/buddyai/health")
 async def health_check():
     return {"status": "OK", "version": "1.0.0", "time": datetime.now(timezone.utc).isoformat()}
@@ -100,14 +94,17 @@ async def health_check():
 
 @app.get("/buddyai/docs", response_model=List[DocResponse])
 async def all_docs(request: Request):
+    #get all documents
     docs = request.app.state.documents
     if not docs:
         raise HTTPException(status_code=404, detail="No documents available!")
+    
     return list(docs.values())
 
 
 @app.post("/buddyai/upload_doc")
 async def upload_doc(request: Request, doc: UploadFile = File(...)):
+    #check type
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
 
@@ -128,7 +125,7 @@ async def upload_doc(request: Request, doc: UploadFile = File(...)):
         type=doc.content_type,
         size=doc.size,
         text=content,
-        truncated=len(content) == MAX_TEXT_LENGTH,
+        truncated=len(content) >= MAX_TEXT_LENGTH,
         uploaded_at=datetime.now(timezone.utc),
     )
     request.app.state.documents[new_doc.id] = new_doc
@@ -160,13 +157,16 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str):
 
     doc = docs[doc_id]
     template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {doc.text} """
-    short = request.app.state.client.chat(
-        model="llama3",
-        messages=[
-            {"role": "system", "content": template},
-            {"role": "user", "content": "summarize the provided document."},
-        ],
-    )
+    try:
+        short = await request.app.state.client.chat(
+            model="gpt-oss:120b",
+            messages=[
+                {"role": "system", "content": template},
+                {"role": "user", "content": "summarize the provided document."},
+            ],
+        )
+    except Exception as e:
+        raise RuntimeError(f"Unable to complete action: {e}")
 
     summary_text = short["message"]["content"]
 
@@ -188,8 +188,12 @@ async def chat(request: Request, body: ChatRequest, doc_id: str):
         messages.append({"role": msg.role, "content": msg.content})
 
     messages.append({"role": "user", "content": body.message})
+    try:
 
-    response = request.app.state.client.chat(model="llama3", messages=messages)
+        response = await request.app.state.client.chat(model="gpt-oss:120b", messages=messages)
+    except Exception as e:
+        raise RuntimeError(f"Unable to complete action: {e}")
+
 
     reply = response["message"]["content"]
 
@@ -213,26 +217,25 @@ async def extract(request: Request, doc_id: str):
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
     The document content is: {doc.text}
     """
+    try:
 
-    response = request.app.state.client.chat(
-        model="llama3",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": "Extract the information as a JSON object with three fields: 'entities', 'dates', and 'figures'.",
-            },
-        ],
-    )
+        response = await request.app.state.client.chat(
+            model="gpt-oss:120b",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": "Extract the information as a JSON object with three fields: 'entities', 'dates', and 'figures'.",
+                },
+            ],
+        )
+    except HTTPException:
+        raise HTTPException(status_code= 500, detail= "Unable to complete action")
 
     content = response["message"]["content"]
 
     try:
         extraction = json.loads(content)
-        data = httpx.get(content).json()
-        entities = data.get("entities", [])
-        dates = data.get("dates", [])
-        figures = data.get("figures", [])
     except json.JSONDecodeError:
         extraction = {"entities": [], "dates": [], "figures": []}
 
@@ -242,3 +245,5 @@ async def extract(request: Request, doc_id: str):
         dates=extraction.get("dates", []),
         figures=extraction.get("figures", []),
     )
+
+
