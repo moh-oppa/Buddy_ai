@@ -1,11 +1,12 @@
 import json
-import httpx
+from sqlalchemy.orm import Session
+from database import DocumentModel, get_db, create_table
 from ollama import AsyncClient
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List
 import uuid
-from fastapi import FastAPI, HTTPException, Request, File, UploadFile
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
@@ -34,9 +35,11 @@ async def lifespan(app: FastAPI):
     if not api_key:
         raise RuntimeError("AI_API_KEY environment variable is not set.")
 
+    create_table()
+
     app.state.client = AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
     app.state.model = ollama_model
-    app.state.documents = {}
+    # app.state.documents = {}
 
     try:
         models = await app.state.client.list()
@@ -93,18 +96,18 @@ async def health_check():
 
 
 @app.get("/buddyai/docs", response_model=List[DocResponse])
-async def all_docs(request: Request):
-    #get all documents
-    docs = request.app.state.documents
+async def all_docs(request: Request, db: Session = Depends(get_db)):
+    # get all documents
+    docs = db.query(DocumentModel).all()
     if not docs:
         raise HTTPException(status_code=404, detail="No documents available!")
-    
-    return list(docs.values())
+
+    return docs
 
 
 @app.post("/buddyai/upload_doc")
-async def upload_doc(request: Request, doc: UploadFile = File(...)):
-    #check type
+async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
+    # check type
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
 
@@ -125,27 +128,30 @@ async def upload_doc(request: Request, doc: UploadFile = File(...)):
         type=doc.content_type,
         size=doc.size,
         text=content,
-        truncated=len(content) >= MAX_TEXT_LENGTH,
+        truncated=len(content) > MAX_TEXT_LENGTH,
         uploaded_at=datetime.now(timezone.utc),
     )
-    request.app.state.documents[new_doc.id] = new_doc
+    db.add(new_doc)
+    db.commit()
+    db.refresh(new_doc)
 
     return DocResponse(
         id=doc_id,
         name=doc.filename,
         size=doc.size,
-        truncated=len(content) == MAX_TEXT_LENGTH,
-        uploaded_at=datetime.now(timezone.utc),
+        truncated=len(content) > MAX_TEXT_LENGTH,
+        uploaded_at=new_doc.uploaded_at,
     )
 
 
 @app.delete("/buddyai/docs/{doc_id}")
-async def delete_doc(request: Request, doc_id: str):
-    docs = request.app.state.documents
-    if doc_id not in docs:
+async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db)):
+    docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
+    if not docs:
         raise HTTPException(status_code=404, detail="Document not found!")
 
-    del docs[doc_id]
+    db.delete(docs)
+    db.commit()
     return {"message": f"Document {doc_id} deleted successfully!"}
 
 
@@ -194,7 +200,6 @@ async def chat(request: Request, body: ChatRequest, doc_id: str):
     except Exception as e:
         raise RuntimeError(f"Unable to complete action: {e}")
 
-
     reply = response["message"]["content"]
 
     update_history = list(body.history) + [
@@ -230,7 +235,7 @@ async def extract(request: Request, doc_id: str):
             ],
         )
     except HTTPException:
-        raise HTTPException(status_code= 500, detail= "Unable to complete action")
+        raise HTTPException(status_code=500, detail="Unable to complete action")
 
     content = response["message"]["content"]
 
@@ -245,5 +250,3 @@ async def extract(request: Request, doc_id: str):
         dates=extraction.get("dates", []),
         figures=extraction.get("figures", []),
     )
-
-
