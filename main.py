@@ -1,4 +1,7 @@
 import json
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 from database import DocumentModel, get_db, create_table
 from ollama import AsyncClient
@@ -106,6 +109,7 @@ async def all_docs(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/buddyai/upload_doc")
+@limiter.limit("5/minute")
 async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
     # check type
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
@@ -156,12 +160,12 @@ async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db
 
 
 @app.post("/buddyai/summary/{doc_id}", response_model=SummaryResponse)
-async def summary(request: Request, body: SummaryRequest, doc_id: str):
-    docs = request.app.state.documents
-    if doc_id not in docs:
+@Limiter.limit("30/minute")
+async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Session = Depends(get_db)):
+    docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
+    if not docs:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    doc = docs[doc_id]
     template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {doc.text} """
     try:
         short = await request.app.state.client.chat(
@@ -180,12 +184,11 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str):
 
 
 @app.post("/buddyai/chat/{doc_id}", response_model=ChatResponse)
-async def chat(request: Request, body: ChatRequest, doc_id: str):
-    docs = request.app.state.documents
-    if doc_id not in docs:
+@Limiter.limit("30/minute")
+async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = Depends(get_db)):
+    docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
+    if not docs:
         raise HTTPException(status_code=404, detail="Document not found!")
-
-    doc = docs[doc_id]
 
     system_prompt = f"""You are a document analyst that answers questions about the provided document. Only use the information from the document to answer all questions. If the document does not contain the information needed to answer a question, respond with 'I don't know.' The document content is: {doc.text}"""
     messages = [{"role": "system", "content": system_prompt}]
@@ -211,12 +214,11 @@ async def chat(request: Request, body: ChatRequest, doc_id: str):
 
 
 @app.post("/buddyai/extract/{doc_id}", response_model=ExtractResponse)
-async def extract(request: Request, doc_id: str):
-    docs = request.app.state.documents
-    if doc_id not in docs:
+@Limiter.limit("30/minute")
+async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
+    docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
+    if not docs:
         raise HTTPException(status_code=404, detail="Document not found!")
-
-    doc = docs[doc_id]
 
     system_prompt = f"""You are a document data analyst that extracts key information from the provided document. Extract information from the document provided and return a JSON object.Raw JSON only and it must be in the following structure: 
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
@@ -250,3 +252,25 @@ async def extract(request: Request, doc_id: str):
         dates=extraction.get("dates", []),
         figures=extraction.get("figures", []),
     )
+
+@app.post("buddyai/chat/stream/{doc_id}")
+async def chat_stream(request: Request, body: ChatRequest, doc_id: str, db: Session = Depends(get_db)):
+    docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
+    if not docs:
+        raise HTTPException(status_code=404, detail="Document not found!")
+
+    system_prompt = f"""You are a document analyst that answers questions about the provided document. Only use the information from the document to answer all questions. If the document does not contain the information needed to answer a question, respond with 'I don't know.' The document content is: {docs.text}"""
+    messages = [{"role": "system", "content": system_prompt}]
+
+    for msg in body.history:
+        messages.append({"role": msg.role, "content": msg.content})
+
+    messages.append({"role": "user", "content": body.message})
+    try:
+
+        response = await request.app.state.client.chat(model="gpt-oss:120b", messages=messages, stream=True)
+    except Exception as e:
+        raise RuntimeError(f"Unable to complete action: {e}")
+
+    async for chunk in response:
+        yield chunk["message"]["content"]
