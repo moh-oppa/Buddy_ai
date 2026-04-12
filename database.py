@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timezone
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/buddyai")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:%23KFashola@localhost:5432/Buddyai")
 
 engine = create_engine(DATABASE_URL)
 
@@ -22,12 +22,12 @@ class DocumentModel(Base):
     text = Column(Text, nullable=False)
     uploaded_at = Column(DateTime(timezone=True), default=lambda:datetime.now(timezone.utc))
 
-    def create_table():
-        Base.metadata.create_all(bind=engine)
+def create_table():
+    Base.metadata.create_all(bind=engine)
 
-    def get_db():
-        db = SessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

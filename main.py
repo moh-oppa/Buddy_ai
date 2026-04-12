@@ -3,7 +3,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
-from database import DocumentModel, get_db, create_table
+from database import DocumentModel,get_db, create_table
 from ollama import AsyncClient
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -13,8 +13,6 @@ from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
-
-
 from schemas import (
     DocResponse,
     SummaryRequest,
@@ -87,6 +85,9 @@ STYLE_TEMPLATE = {
 
 MAX_TEXT_LENGTH = 80000
 
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.get("/buddyai")
 async def root():
@@ -160,7 +161,7 @@ async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db
 
 
 @app.post("/buddyai/summary/{doc_id}", response_model=SummaryResponse)
-@Limiter.limit("30/minute")
+@limiter.limit("30/minute")
 async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
@@ -184,7 +185,7 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Sessi
 
 
 @app.post("/buddyai/chat/{doc_id}", response_model=ChatResponse)
-@Limiter.limit("30/minute")
+@limiter.limit("30/minute")
 async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
@@ -214,7 +215,7 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
 
 
 @app.post("/buddyai/extract/{doc_id}", response_model=ExtractResponse)
-@Limiter.limit("30/minute")
+@limiter.limit("30/minute")
 async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
