@@ -89,14 +89,14 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-@app.get("/buddyai")
-async def root():
-    return {"message": "Welcome to the BuddyAI!"}
+# @app.get("/buddyai")
+# async def root():
+#     return {"message": "Welcome to the BuddyAI!"}
 
 
-@app.get("/buddyai/health")
-async def health_check():
-    return {"status": "OK", "version": "1.0.0", "time": datetime.now(timezone.utc).isoformat()}
+# @app.get("/buddyai/health")
+# async def health_check():
+#     return {"status": "OK", "version": "1.0.0", "time": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/buddyai/docs", response_model=List[DocResponse])
