@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"Ollama not reachable at {ollama_host}: {e}")
 
     print("Ai client initialised")
-    print("Document store initialised")
+    # print("Document store initialised")
 
     yield
 
