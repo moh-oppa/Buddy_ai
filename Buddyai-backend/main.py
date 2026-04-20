@@ -103,7 +103,7 @@ async def all_docs(request: Request, db: Session = Depends(get_db)):
 @app.post("/buddyai/upload_doc")
 @limiter.limit("5/minute")
 async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
-    # check type
+    # checking document type and parsing accordingly
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
 
@@ -127,6 +127,7 @@ async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session 
         truncated=len(content) > MAX_TEXT_LENGTH,
         uploaded_at=datetime.now(timezone.utc),
     )
+    
     db.add(new_doc)
     db.commit()
     db.refresh(new_doc)
@@ -142,6 +143,7 @@ async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session 
 
 @app.delete("/buddyai/docs/{doc_id}")
 async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db)):
+    #checking id in database
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found!")
@@ -157,7 +159,8 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Sessi
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found")
-
+    
+    # creating the system prompt
     template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {doc.text} """
     try:
         short = await request.app.state.client.chat(
