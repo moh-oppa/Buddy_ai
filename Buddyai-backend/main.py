@@ -103,7 +103,7 @@ async def all_docs(request: Request, db: Session = Depends(get_db)):
 @app.post("/buddyai/upload_doc")
 @limiter.limit("5/minute")
 async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
-    # check type
+    # checking document type and parsing accordingly
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
 
@@ -127,6 +127,7 @@ async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session 
         truncated=len(content) > MAX_TEXT_LENGTH,
         uploaded_at=datetime.now(timezone.utc),
     )
+    
     db.add(new_doc)
     db.commit()
     db.refresh(new_doc)
@@ -142,6 +143,7 @@ async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session 
 
 @app.delete("/buddyai/docs/{doc_id}")
 async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db)):
+    #checking id in database
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found!")
@@ -152,12 +154,15 @@ async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db
 
 
 @app.post("/buddyai/summary/{doc_id}", response_model=SummaryResponse)
+#setting rate limit
 @limiter.limit("30/minute")
 async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Session = Depends(get_db)):
+    #fetching document from database
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found")
-
+    
+    # creating the system prompt
     template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {doc.text} """
     try:
         short = await request.app.state.client.chat(
@@ -185,6 +190,7 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
     system_prompt = f"""You are a document analyst that answers questions about the provided document. Only use the information from the document to answer all questions. If the document does not contain the information needed to answer a question, respond with 'I don't know.' The document content is: {doc.text}"""
     messages = [{"role": "system", "content": system_prompt}]
 
+    #adding chat history to the messages list
     for msg in body.history:
         messages.append({"role": msg.role, "content": msg.content})
 
