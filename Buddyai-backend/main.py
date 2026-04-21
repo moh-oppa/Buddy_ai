@@ -154,8 +154,10 @@ async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db
 
 
 @app.post("/buddyai/summary/{doc_id}", response_model=SummaryResponse)
+#setting rate limit
 @limiter.limit("30/minute")
 async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Session = Depends(get_db)):
+    #fetching document from database
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -188,6 +190,7 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
     system_prompt = f"""You are a document analyst that answers questions about the provided document. Only use the information from the document to answer all questions. If the document does not contain the information needed to answer a question, respond with 'I don't know.' The document content is: {doc.text}"""
     messages = [{"role": "system", "content": system_prompt}]
 
+    #adding chat history to the messages list
     for msg in body.history:
         messages.append({"role": msg.role, "content": msg.content})
 
