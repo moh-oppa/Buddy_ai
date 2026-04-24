@@ -92,7 +92,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.get("/buddyai/docs", response_model=List[DocResponse])
 async def all_docs(request: Request, db: Session = Depends(get_db)):
-    # get all documents
+    # get all documents from db
     docs = db.query(DocumentModel).all()
     if not docs:
         raise HTTPException(status_code=404, detail="No documents available!")
@@ -143,7 +143,6 @@ async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session 
 
 @app.delete("/buddyai/docs/{doc_id}")
 async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db)):
-    #checking id in database
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found!")
@@ -157,7 +156,7 @@ async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db
 #setting rate limit
 @limiter.limit("30/minute")
 async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Session = Depends(get_db)):
-    #fetching document from database
+    #fetching document id from database
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -220,10 +219,10 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
 
     system_prompt = f"""You are a document data analyst that extracts key information from the provided document. Extract information from the document provided and return a JSON object.Raw JSON only and it must be in the following structure: 
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
-    The document content is: {doc.text}
+    The document content is: {docs.text}
     """
     try:
-
+        # Initialize the streaming response
         response = await request.app.state.client.chat(
             model="gpt-oss:120b",
             messages=[
@@ -265,7 +264,7 @@ async def chat_stream(request: Request, body: ChatRequest, doc_id: str, db: Sess
 
     messages.append({"role": "user", "content": body.message})
     try:
-
+        # Initialize the streaming response
         response = await request.app.state.client.chat(model="gpt-oss:120b", messages=messages, stream=True)
     except Exception as e:
         raise RuntimeError(f"Unable to complete action: {e}")
