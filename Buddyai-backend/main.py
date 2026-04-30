@@ -34,13 +34,12 @@ async def lifespan(app: FastAPI):
     ollama_host = os.getenv("AI_HOST", "https://ollama.com")
     ollama_model = os.getenv("AI_MODEL", "gpt-oss:120b")
     if not api_key:
-        raise RuntimeError("AI_API_KEY environment variable is not set.")
+        raise RuntimeError("BuddyAI_API_KEY environment variable is not set.")
 
     create_table()
 
     app.state.client = AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
     app.state.model = ollama_model
-    # app.state.documents = {}
 
     try:
         models = await app.state.client.list()
@@ -54,7 +53,6 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"Ollama not reachable at {ollama_host}: {e}")
 
     print("Ai client initialised")
-    # print("Document store initialised")
 
     yield
 
