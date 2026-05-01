@@ -4,6 +4,8 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timezone
 import os
 
+
+#starting up
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:%23KFashola@localhost:5432/Buddyai")
 
 engine = create_engine(DATABASE_URL)
