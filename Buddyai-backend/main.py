@@ -83,7 +83,7 @@ STYLE_TEMPLATE = {
 
 MAX_TEXT_LENGTH = 80000
 
-#setting up rate limiter
+
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -101,7 +101,7 @@ async def all_docs(request: Request, db: Session = Depends(get_db)):
 @app.post("/buddyai/upload_doc")
 @limiter.limit("5/minute")
 async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
-    # checking document type and parsing accordingly
+
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
 
