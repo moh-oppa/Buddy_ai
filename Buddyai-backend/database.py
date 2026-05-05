@@ -24,6 +24,7 @@ class DocumentModel(Base):
     text = Column(Text, nullable=False)
     uploaded_at = Column(DateTime(timezone=True), default=lambda:datetime.now(timezone.utc))
 
+# This field indicates whether the text was truncated to fit within the MAX_TEXT_LENGTH limit.
 def create_table():
     Base.metadata.create_all(bind=engine)
 
