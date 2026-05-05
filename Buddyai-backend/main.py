@@ -34,13 +34,12 @@ async def lifespan(app: FastAPI):
     ollama_host = os.getenv("AI_HOST", "https://ollama.com")
     ollama_model = os.getenv("AI_MODEL", "gpt-oss:120b")
     if not api_key:
-        raise RuntimeError("AI_API_KEY environment variable is not set.")
+        raise RuntimeError("BuddyAI_API_KEY environment variable is not set.")
 
     create_table()
 
     app.state.client = AsyncClient(host=ollama_host, headers={"Authorization": f"Bearer {api_key}"})
     app.state.model = ollama_model
-    # app.state.documents = {}
 
     try:
         models = await app.state.client.list()
@@ -54,7 +53,6 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"Ollama not reachable at {ollama_host}: {e}")
 
     print("Ai client initialised")
-    # print("Document store initialised")
 
     yield
 
@@ -85,7 +83,7 @@ STYLE_TEMPLATE = {
 
 MAX_TEXT_LENGTH = 80000
 
-#setting up rate limiter
+
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -103,7 +101,7 @@ async def all_docs(request: Request, db: Session = Depends(get_db)):
 @app.post("/buddyai/upload_doc")
 @limiter.limit("5/minute")
 async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
-    # checking document type and parsing accordingly
+
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
 

@@ -4,7 +4,7 @@ from fastapi import File, HTTPException, UploadFile
 
 MAX_TEXT_LENGTH = 80000
 
-#making the parsing functions more robust and handling errors gracefully.
+# Utility functions for parsing different document types (PDF, TXT, DOCX) and extracting text content.
 async def parse_pdf(doc: UploadFile = File(...)):
     try:
         content = await doc.read()
@@ -18,7 +18,7 @@ async def parse_pdf(doc: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Error processing file: {str(e)}")
 
-#Adding a new function to handle plain text files, ensuring that we can process a wider variety of document types.
+# For TXT files, we can simply read the content and decode it as UTF-8.
 async def parse_text(doc: UploadFile = File(...)):
     try:
         content = await doc.read()
