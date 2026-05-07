@@ -97,7 +97,7 @@ async def all_docs(request: Request, db: Session = Depends(get_db)):
 
     return docs
 
-# Endpoint to upload a document and extract text content, with rate limiting to prevent abuse.
+
 @app.post("/buddyai/upload_doc")
 @limiter.limit("5/minute")
 async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -158,7 +158,6 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Sessi
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    # creating the system prompt
     template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {doc.text} """
     try:
         short = await request.app.state.client.chat(
@@ -219,7 +218,6 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     The document content is: {docs.text}
     """
     try:
-        # Initialize the streaming response
         response = await request.app.state.client.chat(
             model="gpt-oss:120b",
             messages=[
