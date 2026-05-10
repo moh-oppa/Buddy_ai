@@ -83,7 +83,6 @@ STYLE_TEMPLATE = {
 
 MAX_TEXT_LENGTH = 80000
 
-# Initialize the rate limiter
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -184,7 +183,6 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
     system_prompt = f"""You are a document analyst that answers questions about the provided document. Only use the information from the document to answer all questions. If the document does not contain the information needed to answer a question, respond with 'I don't know.' The document content is: {doc.text}"""
     messages = [{"role": "system", "content": system_prompt}]
 
-    #adding chat history to the messages list
     for msg in body.history:
         messages.append({"role": msg.role, "content": msg.content})
 
