@@ -5,7 +5,6 @@ from fastapi import File, HTTPException, UploadFile
 MAX_TEXT_LENGTH = 80000
 
 
-# parsing pdf
 async def parse_pdf(doc: UploadFile = File(...)):
     try:
         content = await doc.read()
@@ -30,7 +29,6 @@ async def parse_text(doc: UploadFile = File(...)):
         raise HTTPException(status_code=422, detail=f"Error processing file: {str(e)}")
 
 
-# parsing dox
 async def parse_docx(doc: UploadFile = File(...)):
     try:
         from docx import Document as DocxDocument
