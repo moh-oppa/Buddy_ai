@@ -205,6 +205,7 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
 
 @app.post("/buddyai/extract/{doc_id}", response_model=ExtractResponse)
 @limiter.limit("30/minute")
+# This endpoint is designed to extract specific information from the document, such as named entities, dates, and figures. It constructs a system prompt that instructs the model to return a JSON object with the required structure. The response is then parsed and returned in a structured format.
 async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
@@ -243,6 +244,7 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     )
 
 @app.post("buddyai/chat/stream/{doc_id}")
+# This endpoint is designed for streaming responses, so it returns an async generator that yields chunks of the response as they are received from the model.
 async def chat_stream(request: Request, body: ChatRequest, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
