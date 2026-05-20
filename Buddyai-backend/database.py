@@ -26,7 +26,6 @@ class DocumentModel(Base):
 
 def create_table():
     Base.metadata.create_all(bind=engine)
-#to create the table, run this function once when setting up the application
 def get_db():
     db = SessionLocal()
     try:
