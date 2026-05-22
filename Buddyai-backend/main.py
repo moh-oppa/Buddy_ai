@@ -243,7 +243,6 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     )
 
 @app.post("buddyai/chat/stream/{doc_id}")
-#@limiter.limit("30/minute")
 async def chat_stream(request: Request, body: ChatRequest, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
