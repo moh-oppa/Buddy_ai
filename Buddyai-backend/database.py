@@ -24,7 +24,6 @@ class DocumentModel(Base):
     text = Column(Text, nullable=False)
     uploaded_at = Column(DateTime(timezone=True), default=lambda:datetime.now(timezone.utc))
 
-#new update
 def create_table():
     Base.metadata.create_all(bind=engine)
 def get_db():
