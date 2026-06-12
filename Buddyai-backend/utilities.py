@@ -17,7 +17,6 @@ async def parse_pdf(doc: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Error processing file: {str(e)}")
 
-#finny
 async def parse_text(doc: UploadFile = File(...)):
     try:
         content = await doc.read()
