@@ -2,6 +2,7 @@ import json
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 from database import DocumentModel,get_db, create_table
 from ollama import AsyncClient
@@ -63,7 +64,7 @@ app = FastAPI(title="BuddyAI API", description="AI powered document reader ", ve
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['"http://localhost:5173"'],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,11 +90,14 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.get("/buddyai/docs", response_model=List[DocResponse])
-async def all_docs(request: Request, db: Session = Depends(get_db)):
-    docs = db.query(DocumentModel).all()
-    if not docs:
-        raise HTTPException(status_code=404, detail="No documents available!")
+async def all_docs(db: Session = Depends(get_db)):
 
+    try:
+        docs = db.query(DocumentModel).all()
+
+    except DatabaseError:
+        raise HTTPException(status_code=500, detail=f"Error fetching documents")
+    
     return docs
 
 
