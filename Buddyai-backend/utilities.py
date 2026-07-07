@@ -27,7 +27,7 @@ async def parse_text(doc: UploadFile = File(...)):
         raise HTTPException(status_code=422, detail=f"Error processing file: {str(e)}")
 
 #new function to parse docx files
-
+#note: this function requires the python-docx library to be installed
 async def parse_docx(doc: UploadFile = File(...)):
     try:
         from docx import Document as DocxDocument
