@@ -89,7 +89,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
-@app.get("/buddyai/docs", response_model=List[DocResponse])
+@app.get("/docs", response_model=List[DocResponse])
 async def all_docs(db: Session = Depends(get_db)):
 
     try:
@@ -101,9 +101,9 @@ async def all_docs(db: Session = Depends(get_db)):
     return docs
 
 
-@app.post("/buddyai/upload_doc")
+@app.post("/upload_doc")
 @limiter.limit("5/minute")
-async def upload_doc(doc: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
 
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
