@@ -119,13 +119,12 @@ async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session 
 
     doc_id = str(uuid.uuid4())
 
-    new_doc = Doc(
+    new_doc = DocumentModel(
         id=doc_id,
         name=doc.filename,
         type=doc.content_type,
         size=doc.size,
         text=content,
-        truncated=len(content) > MAX_TEXT_LENGTH,
         uploaded_at=datetime.now(timezone.utc),
     )
     
