@@ -1,23 +1,25 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Literal
 from datetime import datetime
 
 
 class Doc(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     type: str
     size: int
     text: str
-    truncated: bool
     uploaded_at: datetime
 
 
 class DocResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     size: int
-    truncated: bool
     uploaded_at: datetime
 
 

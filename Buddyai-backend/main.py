@@ -89,7 +89,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
-@app.get("/buddyai/docs", response_model=List[DocResponse])
+@app.get("/", response_model=List[DocResponse])
 async def all_docs(db: Session = Depends(get_db)):
 
     try:
@@ -101,9 +101,9 @@ async def all_docs(db: Session = Depends(get_db)):
     return docs
 
 
-@app.post("/buddyai/upload_doc")
+@app.post("/upload_doc")
 @limiter.limit("5/minute")
-async def upload_doc(doc: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session = Depends(get_db)):
 
     if doc.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported file type!")
@@ -119,13 +119,12 @@ async def upload_doc(doc: UploadFile = File(...), db: Session = Depends(get_db))
 
     doc_id = str(uuid.uuid4())
 
-    new_doc = Doc(
+    new_doc = DocumentModel(
         id=doc_id,
         name=doc.filename,
         type=doc.content_type,
         size=doc.size,
         text=content,
-        truncated=len(content) > MAX_TEXT_LENGTH,
         uploaded_at=datetime.now(timezone.utc),
     )
     
@@ -150,7 +149,7 @@ async def delete_doc(request: Request, doc_id: str, db: Session = Depends(get_db
 
     db.delete(docs)
     db.commit()
-    return {"message": f"Document {doc_id} deleted successfully!"}
+    return {"message": f"Document {docs.name} deleted successfully!"}
 
 
 @app.post("/buddyai/summary/{doc_id}", response_model=SummaryResponse)
@@ -160,7 +159,7 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Sessi
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {doc.text} """
+    template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {docs.text} """
     try:
         short = await request.app.state.client.chat(
             model="gpt-oss:120b",
@@ -184,7 +183,7 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found!")
 
-    system_prompt = f"""You are a document analyst that answers questions about the provided document. Only use the information from the document to answer all questions. If the document does not contain the information needed to answer a question, respond with 'I don't know.' The document content is: {doc.text}"""
+    system_prompt = f"""You are a document analyst that answers questions about the provided document. Only use the information from the document to answer all questions. If the document does not contain the information needed to answer a question, respond with 'I don't know.' The document content is: {docs.text}"""
     messages = [{"role": "system", "content": system_prompt}]
 
     for msg in body.history:
