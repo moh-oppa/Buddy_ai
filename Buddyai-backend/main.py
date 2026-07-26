@@ -178,6 +178,7 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Sessi
 
 @app.post("/buddyai/chat/{doc_id}", response_model=ChatResponse)
 @limiter.limit("30/minute")
+# limiter is limiting
 async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
