@@ -208,7 +208,6 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
 
 @app.post("/buddyai/extract/{doc_id}", response_model=ExtractResponse)
 @limiter.limit("30/minute")
-#nothing new here
 async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
