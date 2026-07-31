@@ -4,7 +4,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
-from database import DocumentModel,get_db, create_table
+from database import DocumentModel, get_db, create_table
 from ollama import AsyncClient
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -97,7 +97,7 @@ async def all_docs(db: Session = Depends(get_db)):
 
     except DatabaseError:
         raise HTTPException(status_code=500, detail=f"Error fetching documents")
-    
+
     return docs
 
 
@@ -127,7 +127,7 @@ async def upload_doc(request: Request, doc: UploadFile = File(...), db: Session 
         text=content,
         uploaded_at=datetime.now(timezone.utc),
     )
-    
+
     db.add(new_doc)
     db.commit()
     db.refresh(new_doc)
@@ -158,8 +158,10 @@ async def summary(request: Request, body: SummaryRequest, doc_id: str, db: Sessi
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    template = f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {docs.text} """
+
+    template = (
+        f"""You are a document analyst. {STYLE_TEMPLATE[body.style]} This is the document content: {docs.text} """
+    )
     try:
         short = await request.app.state.client.chat(
             model="gpt-oss:120b",
@@ -213,6 +215,8 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     if not docs:
         raise HTTPException(status_code=404, detail="Document not found!")
 
+    # new comment for today
+
     system_prompt = f"""You are a document data analyst that extracts key information from the provided document. Extract information from the document provided and return a JSON object.Raw JSON only and it must be in the following structure: 
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
     The document content is: {docs.text}
@@ -244,6 +248,7 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
         dates=extraction.get("dates", []),
         figures=extraction.get("figures", []),
     )
+
 
 @app.post("buddyai/chat/stream/{doc_id}")
 async def chat_stream(request: Request, body: ChatRequest, doc_id: str, db: Session = Depends(get_db)):
