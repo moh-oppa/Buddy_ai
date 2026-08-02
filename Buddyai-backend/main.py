@@ -207,7 +207,7 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
 
     return ChatResponse(response=reply, history=update_history)
 
-
+#nw commit
 @app.post("/buddyai/extract/{doc_id}", response_model=ExtractResponse)
 @limiter.limit("30/minute")
 async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
