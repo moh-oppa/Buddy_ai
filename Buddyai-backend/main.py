@@ -219,6 +219,7 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
     The document content is: {docs.text}
     """
+    #exceptional
     try:
         response = await request.app.state.client.chat(
             model="gpt-oss:120b",
