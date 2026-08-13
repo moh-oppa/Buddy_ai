@@ -208,7 +208,6 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
     return ChatResponse(response=reply, history=update_history)
 
 
-#new commit
 @app.post("/buddyai/extract/{doc_id}", response_model=ExtractResponse)
 @limiter.limit("30/minute")
 async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
@@ -220,6 +219,7 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
     The document content is: {docs.text}
     """
+    #new
     try:
         response = await request.app.state.client.chat(
             model="gpt-oss:120b",
