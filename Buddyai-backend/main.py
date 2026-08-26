@@ -219,7 +219,6 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
     The document content is: {docs.text}
     """
-    #new
     try:
         response = await request.app.state.client.chat(
             model="gpt-oss:120b",
@@ -257,6 +256,7 @@ async def chat_stream(request: Request, body: ChatRequest, doc_id: str, db: Sess
 
     system_prompt = f"""You are a document analyst that answers questions about the provided document. Only use the information from the document to answer all questions. If the document does not contain the information needed to answer a question, respond with 'I don't know.' The document content is: {docs.text}"""
     messages = [{"role": "system", "content": system_prompt}]
+    #nothing new
 
     for msg in body.history:
         messages.append({"role": msg.role, "content": msg.content})
