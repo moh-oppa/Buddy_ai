@@ -218,7 +218,8 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     system_prompt = f"""You are a document data analyst that extracts key information from the provided document. Extract information from the document provided and return a JSON object.Raw JSON only and it must be in the following structure: 
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
     The document content is: {docs.text}
-    """    
+    """
+    #newday    
     try:
         response = await request.app.state.client.chat(
             model="gpt-oss:120b",
