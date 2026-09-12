@@ -213,7 +213,6 @@ async def chat(request: Request, body: ChatRequest, doc_id: str, db: Session = D
 async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     docs = db.query(DocumentModel).filter(DocumentModel.id == doc_id).first()
     if not docs:
-        #gjdj
         raise HTTPException(status_code=404, detail="Document not found!")
     system_prompt = f"""You are a document data analyst that extracts key information from the provided document. Extract information from the document provided and return a JSON object.Raw JSON only and it must be in the following structure: 
     {{"entities": ["list of named people, organizations, places"], "dates": ["list of all dates and time references"], "figures": ["list of all numbers, statistics, monetary values"]}} 
