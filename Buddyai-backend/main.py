@@ -219,7 +219,6 @@ async def extract(request: Request, doc_id: str, db: Session = Depends(get_db)):
     The document content is: {docs.text}
     """
     try:
-        #hgfddg
         response = await request.app.state.client.chat(
             model="gpt-oss:120b",
             messages=[
